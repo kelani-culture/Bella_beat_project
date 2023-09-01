@@ -1,0 +1,176 @@
+---
+title: "Bella beat analysis"
+author: "Kelani"
+date: "2022-09-02"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+# Bella beat fitness app analysis
+
+## Scenario
+You are a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused
+products for women. Bellabeat is a successful small company, but they have the potential to become a larger player in the
+global <smart device> market. Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart
+device fitness data could help unlock new growth opportunities for the company. You have been asked to focus on one of
+Bellabeat’s products and analyze smart device data to gain insight into how consumers are using their smart devices. The
+insights you discover will then help guide marketing strategy for the company. You will present your analysis to the Bellabeat
+executive team along with your high-level recommendations for Bellabeat’s marketing strategy
+
+```{r Libraries, warning=FALSE}
+  library(tidyverse)
+  library(skimr)
+  library(janitor)
+
+```
+
+Start by importing all necessary data for analysis coming from an african country I notice that the date are
+in *MM/DD/YYYY* so i decided to transform the date to *DD/MM/YYYY* using excel and then I decided to import the *dailyActivity_merged.csv*, *hourlyCalories_merged.csv*, *hourlyIntensities_merged.csv*, *hourlySteps_merged.csv*, *sleepDay_merged.csv*,*weightLoginfo_merged.csv* why I chose these data is because  they are the reason people love to purchase their smart devices. let's  start by renaming each dataset
+
+```{r Improting all dataset required}
+daily_activity <- read_csv("E:/Fitabase Data/dailyActivity_merged.csv")
+hourly_calories <- read_csv("E:/Fitabase Data/hourlyCalories_merged.csv")
+hourly_intensities <- read_csv("E:/Fitabase Data/hourlyIntensities_merged.csv")
+hourly_steps <- read_csv("E:/Fitabase Data/hourlySteps_merged.csv")
+sleep_day <- read_csv("E:/Fitabase Data/sleepDay_merged.csv")
+weight_log <- read_csv("E:/Fitabase Data/weightLoginfo_merged.csv")
+
+```
+
+Checking the number of partipant in each data set Id
+```{r}
+n_distinct(daily_activity$Id)
+n_distinct(hourly_calories$Id)
+n_distinct(hourly_intensities$Id)
+n_distinct(hourly_steps$Id)
+n_distinct(sleep_day$Id)
+n_distinct(weight_log$Id)
+```
+I got the total number of each participants in the datasets   daily_activities 33, hourly_calories 33,
+hourly_intensities 33, hourly_steps 33, sleep_day 24 and weigth_log 8 it goes without saying that 8 participants is not a proper sample size.
+
+Taking the average of each total steps , total distance and sedentary active distance shows 
+```{r}
+daily_activity %>% 
+  summarise(avg_total_steps =mean(TotalSteps),
+            avg_calories = mean(Calories),
+            avg_Total_distance = mean(TotalDistance),
+            avg_sedentaryMinutes = mean(SedentaryMinutes))
+
+
+# taking average time people sleep per day and average time people stay_in bed
+sleep_day %>% summarise(avg_TotaltimeInBed = mean(TotalTimeInBed),
+                        avg_Totaltimeasleep = mean(TotalMinutesAsleep))
+  
+
+hourly_steps %>% summarise(avg_totalsteps = mean(StepTotal))
+
+weight_log %>% 
+  summarise(avg_weight_kg = mean(WeightKg),
+            avg_BMi = mean(BMI),
+            avg_fat = mean(Fat, na.rm=TRUE))
+
+
+```
+* Average total steps of 7,638  is okay but it will be better if people can walk an average of 10,000
+steps which is recommended by the WHO 
+
+* the average calory intake is 2304 which seems to not be a bad thing for people who are doing physical activity everyday while it is quite a lot id you are doing less physical activities the average a day should
+be 2000
+
+* average sedentary time seems to be around 16 hours (991 minutes) whch is alot compared to 7-10
+hours recommended by WHO
+
+* Majority of people are lightly active 
+* The average total time in Bed may 7 hours (419 minute)also contribute to the reason why people average sedentary time is very high
+* while average time asleep is 6 hours (419 minutes) 
+
+# visualization 
+I think it is now time to visualize our data
+
+let's start by merging our data 
+```{r}
+merged_data <-  merge(daily_activity, sleep_day, by=c('Id'))
+
+```
+```{r Total step vs calories}
+ggplot(data = merged_data, aes(x=TotalSteps, y=Calories)) +
+  geom_point(color = "Blue", size= 2) + 
+  geom_smooth(method = lm, se = FALSE) +
+  labs(title = "Calories vs TotalSteps",)+
+  theme(axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        title = element_text(size = 16))
+```
+Here we could see a positive relationship between walking and calories which means the more you walk the more calories you burn
+
+
+```{r Total minutes asleep VS total time in bed}
+
+ggplot(data = merged_data, aes(x=TotalMinutesAsleep, y= TotalTimeInBed)) + 
+  geom_line(color = "purple")+
+  geom_jitter(color = "Blue")+
+  labs(title = "Total Minutes Asleep VS Total Time In Bed")+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        title = element_text(size= 16))
+
+```
+ There's a linear trend in the total time spent sleeping  compared to the total time  spent on Bed this is to show that Bella beat can help it customer by notifying them on when to sleep and advising  customers to sleep an average of 7 hours a day
+
+
+```{r avg total intensities vs time}
+avg_hourly_intensities <- hourly_intensities %>% 
+  group_by(Time) %>% 
+  summarise(avg_total_intensity = mean(TotalIntensity))
+
+ggplot(data = avg_hourly_intensities, aes(x= Time, y=avg_total_intensity)) +
+  geom_line( color= "Red") +
+  theme_bw()+
+  labs(title = "avg total intensities VS Time")+
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        title = element_text(size= 16))
+```
+
+
+Here we see that people seems to be more active in the afternoon the graph shows us that from 12pm to 8 pm is when people become more intense  which means they just have their office lunch time or are just coming back from work and wants to visit the gym aroound this time they could be notified to do some sort of fitness exercise to help them loose fatigue 
+
+```{r  sedentary minutes vs total minutes minutes}
+ggplot(merged_data, aes(x=SedentaryMinutes, y= TotalMinutesAsleep)) +
+  geom_smooth()+
+  labs(title = "Sedentary minutes vs Total minutes asleep")+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 14),
+        title = element_text(size= 16))
+```
+
+
+This graph made us understand that the less sedentary we are the more we sleep and also vise versa
+because the more we sleep the more energy we could gather Bella beat could create a notification
+for users to remind them on when to sleep
+
+This are the insight that I was able to draw from the analysis
+* and also not to make mistake that correlation does not lead to causation*
+
+# Conslusion
+
+In conclusion after analyzing the data I think that I have been able to Identify pattern
+that can help Bella beat in their marketing strategy
+
+* Bella beat target audience are office people this means they spend alot of time wasted at work
+  but are always active during office lunch time or 5 pm when they've close fro work up until 8 pm in the night
+  
+* We also found out that customers do more of light activity
+
+### To sum up my conclusion
+* Bella beat can help improve customer sleep by notifying them on when to sleep and also advising them
+   to take an adverage sleep of up to 7 hours
+* Bella beat could help  notify customers around 12 pm noon to take an exercise so as to reduce being sedent
+* Bella beat could advise customer take an average of 10,000 walk per day so as to reduce fatigue and 
+
+
+
